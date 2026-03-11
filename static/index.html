@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Spanel</title>
+    <meta name="description" content="Spanel — System monitoring dashboard">
+    <link rel="stylesheet" href="/static/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@xterm/xterm/css/xterm.css">
+    <script src="https://cdn.jsdelivr.net/npm/@xterm/xterm/lib/xterm.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@xterm/addon-fit/lib/addon-fit.js"></script>
+</head>
+<body>
+
+    <button class="hamburger" id="hamburger" onclick="toggleSidebar()">
+        <i class="fa-solid fa-bars"></i>
+    </button>
+
+    <div class="app">
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-brand" id="sidebar-brand"><i class="fa-solid fa-rocket"></i> <span id="panel-name">Spanel</span></div>
+
+            <!-- Host -->
+            <div class="host-card">
+                <div class="host-top">
+                    <span class="host-tag" id="host-tag"><i class="fa-solid fa-circle dot-pulse"></i> This Machine</span>
+                    <button class="icon-btn" onclick="toggleRename()"><i class="fa-solid fa-pen-to-square"></i></button>
+                </div>
+                <h3 id="display-hostname">—</h3>
+                <div id="rename-box" class="rename-box hide">
+                    <input id="rename-input" placeholder="New name…">
+                    <button onclick="saveRename()"><i class="fa-solid fa-check"></i></button>
+                </div>
+                <p class="host-sub" id="host-os">Linux</p>
+                <p class="host-sub" id="host-physical">—</p>
+            </div>
+
+            <!-- Servers -->
+            <div class="server-section">
+                <div class="section-title">
+                    <span>Servers</span>
+                    <button class="icon-btn" onclick="toggleAddServer()"><i class="fa-solid fa-plus"></i></button>
+                </div>
+                <div id="add-server-box" class="add-server-box hide">
+                    <input id="srv-name" placeholder="Name">
+                    <input id="srv-url" placeholder="http://ip:port">
+                    <button onclick="addServer()"><i class="fa-solid fa-check"></i> Add</button>
+                </div>
+                <ul id="server-list" class="server-list"></ul>
+            </div>
+
+            <!-- User -->
+            <div class="user-badge" id="user-badge">
+                <i class="fa-solid fa-user-circle"></i>
+                <span id="user-name">—</span>
+                <button class="icon-btn" onclick="doLogout()" title="Logout"><i class="fa-solid fa-right-from-bracket"></i></button>
+            </div>
+
+            <!-- Nav -->
+            <nav class="sidebar-nav">
+                <a class="nav-link active" data-view="dashboard" onclick="switchView('dashboard', this)">
+                    <i class="fa-solid fa-chart-pie"></i> Dashboard
+                </a>
+                <a class="nav-link" data-view="terminal" onclick="switchView('terminal', this)">
+                    <i class="fa-solid fa-terminal"></i> Terminal
+                </a>
+                <a class="nav-link" data-view="processes" onclick="switchView('processes', this)">
+                    <i class="fa-solid fa-microchip"></i> Processes
+                </a>
+                <a class="nav-link" data-view="files" onclick="switchView('files', this)">
+                    <i class="fa-solid fa-folder-open"></i> Files
+                </a>
+                <a class="nav-link" data-view="containers" onclick="switchView('containers', this)">
+                    <i class="fa-solid fa-box-open"></i> Containers
+                </a>
+                <a class="nav-link" data-view="sandbox" onclick="switchView('sandbox', this)">
+                    <i class="fa-solid fa-flask"></i> Sandbox
+                </a>
+                <a class="nav-link" data-view="settings" onclick="switchView('settings', this)">
+                    <i class="fa-solid fa-gear"></i> Settings
+                </a>
+            </nav>
+        </aside>
+
+        <main class="main">
+
+            <!-- ──── Dashboard ──── -->
+            <section id="view-dashboard" class="view active">
+                <h1 class="page-title">System Overview</h1>
+                <div class="cards" id="cards-container">
+                    <div class="card" data-card-id="cpu">
+                        <div class="card-head"><i class="fa-solid fa-microchip"></i> CPU</div>
+                        <div class="chart-wrap doughnut-wrap"><canvas id="cpuChart"></canvas></div>
+                        <div class="metric-big" id="cpu-pct">0 %</div>
+                        <div class="metric-row">
+                            <span id="cpu-cores"><i class="fa-solid fa-layer-group"></i> — cores</span>
+                            <span id="cpu-freq"><i class="fa-solid fa-bolt"></i> —</span>
+                        </div>
+                    </div>
+                    <div class="card" data-card-id="mem">
+                        <div class="card-head"><i class="fa-solid fa-memory"></i> Memory</div>
+                        <div class="chart-wrap doughnut-wrap"><canvas id="memChart"></canvas></div>
+                        <div class="metric-big" id="mem-pct">0 %</div>
+                        <div class="metric-row">
+                            <span id="mem-used"><i class="fa-solid fa-arrow-up"></i> — used</span>
+                            <span id="mem-total"><i class="fa-solid fa-hard-drive"></i> — total</span>
+                        </div>
+                    </div>
+                    <div class="card wide" data-card-id="history">
+                        <div class="card-head"><i class="fa-solid fa-wave-square"></i> History</div>
+                        <div class="chart-wrap line-wrap"><canvas id="historyChart"></canvas></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ──── Terminal ──── -->
+            <section id="view-terminal" class="view">
+                <div class="card wide term-card" style="margin-top:0">
+                    <div class="card-head" style="display:flex;align-items:center;padding:0.5rem 1rem">
+                        <span style="font-weight:600"><i class="fa-solid fa-server"></i> Shell Access</span>
+                        <div style="margin-left:auto;display:flex;align-items:center;gap:0.5rem">
+                            <span style="font-size:0.75rem;color:var(--text3)">Target Host:</span>
+                            <select id="term-host-select" class="settings-input" style="width:150px;padding:0.2rem 0.5rem"></select>
+                        </div>
+                    </div>
+                </div>
+                <div class="term-chrome">
+                    <div class="term-tabs" id="term-tabs"></div>
+                    <div class="term-body" id="term-body"></div>
+                </div>
+                <!-- On-screen keyboard (now floating overlay) -->
+                <div class="osk" id="osk">
+                    <div class="osk-drag-handle"><i class="fa-solid fa-grip-lines"></i> Touch OSK <button onclick="document.getElementById('osk').classList.remove('show-osk')" style="float:right;background:none;border:none;color:#fff"><i class="fa-solid fa-xmark"></i></button></div>
+                    <div class="osk-row">
+                        <button data-key="Escape" class="osk-btn">Esc</button>
+                        <button data-key="Tab" class="osk-btn">Tab</button>
+                        <button data-key="Control" class="osk-btn osk-toggle" id="osk-ctrl">Ctrl</button>
+                        <button data-key="Alt" class="osk-btn osk-toggle" id="osk-alt">Alt</button>
+                        <button data-send="\x01" class="osk-btn">C-a</button>
+                        <button data-send="\x03" class="osk-btn">C-c</button>
+                        <button data-send="\x04" class="osk-btn">C-d</button>
+                    </div>
+                    <div class="osk-row">
+                        <button data-key="ArrowUp" class="osk-btn"><i class="fa-solid fa-arrow-up"></i></button>
+                        <button data-key="ArrowDown" class="osk-btn"><i class="fa-solid fa-arrow-down"></i></button>
+                        <button data-key="ArrowLeft" class="osk-btn"><i class="fa-solid fa-arrow-left"></i></button>
+                        <button data-key="ArrowRight" class="osk-btn"><i class="fa-solid fa-arrow-right"></i></button>
+                        <button data-key="Home" class="osk-btn">Home</button>
+                        <button data-key="End" class="osk-btn">End</button>
+                        <button data-key="PageUp" class="osk-btn">PgUp</button>
+                        <button data-key="PageDown" class="osk-btn">PgDn</button>
+                    </div>
+                    <div class="osk-row">
+                        <button data-fkey="1" class="osk-btn osk-fn">F1</button>
+                        <button data-fkey="2" class="osk-btn osk-fn">F2</button>
+                        <button data-fkey="3" class="osk-btn osk-fn">F3</button>
+                        <button data-fkey="4" class="osk-btn osk-fn">F4</button>
+                        <button data-fkey="5" class="osk-btn osk-fn">F5</button>
+                        <button data-fkey="6" class="osk-btn osk-fn">F6</button>
+                        <button data-fkey="7" class="osk-btn osk-fn">F7</button>
+                        <button data-fkey="8" class="osk-btn osk-fn">F8</button>
+                        <button data-fkey="9" class="osk-btn osk-fn">F9</button>
+                        <button data-fkey="10" class="osk-btn osk-fn">F10</button>
+                        <button data-fkey="11" class="osk-btn osk-fn">F11</button>
+                        <button data-fkey="12" class="osk-btn osk-fn">F12</button>
+                    </div>
+                </div>
+                <button class="osk-summon-btn" onclick="document.getElementById('osk').classList.toggle('show-osk')"><i class="fa-solid fa-keyboard"></i></button>
+            </section>
+
+            <!-- ──── Processes ──── -->
+            <section id="view-processes" class="view">
+                <h1 class="page-title"><i class="fa-solid fa-microchip"></i> Processes</h1>
+                
+                <div class="cards">
+                    <div class="card wide">
+                        <div class="card-head"><i class="fa-solid fa-play"></i> Managed Processes</div>
+                        <div class="settings-control">
+                            <input id="mp-name" class="settings-input" placeholder="Task Name (e.g. MyServer)">
+                            <input id="mp-cmd" class="settings-input" placeholder="Command (e.g. node ./app.js)">
+                            <button class="settings-btn" onclick="startManagedProc()">Start</button>
+                            <button class="settings-btn" onclick="loadManagedProcs()"><i class="fa-solid fa-rotate-right"></i></button>
+                        </div>
+                        <div class="table-wrap">
+                            <table class="data-table" id="mp-table">
+                                <thead><tr><th>Name</th><th>Command</th><th>PID</th><th>Status</th><th>Actions</th></tr></thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                    </div>
+                    
+                    <div class="card wide">
+                        <div class="card-head"><i class="fa-solid fa-list-ul"></i> System Processes (Top by CPU) <button class="icon-btn" onclick="loadSysProcs()" style="margin-left:auto"><i class="fa-solid fa-rotate-right"></i></button></div>
+                        <div class="table-wrap">
+                            <table class="data-table" id="sys-table">
+                                <thead><tr><th>PID</th><th>User</th><th>Name</th><th>CPU %</th><th>Mem %</th><th>Command</th><th>Action</th></tr></thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ──── Files ──── -->
+            <section id="view-files" class="view">
+                <h1 class="page-title"><i class="fa-solid fa-folder-open"></i> File Manager</h1>
+                <div class="card wide">
+                    <div class="card-head">
+                        <i class="fa-regular fa-folder"></i> /shared/ 
+                        <button class="icon-btn" onclick="loadFiles()" style="margin-left:auto"><i class="fa-solid fa-rotate-right"></i></button>
+                    </div>
+                    <div class="file-upload-zone" id="file-dropzone" onclick="document.getElementById('file-input').click()">
+                        <i class="fa-solid fa-cloud-arrow-up"></i> Click or Drag files here to upload
+                        <input type="file" id="file-input" style="display:none" onchange="uploadFile(this.files[0])">
+                    </div>
+                    <div class="table-wrap">
+                        <table class="data-table" id="files-table">
+                            <thead><tr><th>Name</th><th>Size</th><th>Modified</th><th>Actions</th></tr></thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ──── Containers ──── -->
+            <section id="view-containers" class="view">
+                <h1 class="page-title"><i class="fa-solid fa-box-open"></i> Containers</h1>
+                
+                <div class="card wide">
+                    <div class="card-head"><i class="fa-solid fa-plus"></i> New Container</div>
+                    <div class="settings-control">
+                        <input id="ct-new-name" class="settings-input" placeholder="Container Name (e.g. ubuntu-dev)">
+                        <select id="ct-new-tarball" class="settings-input">
+                            <option value="">Select Rootfs Tarball from /rootfs</option>
+                        </select>
+                        <input id="ct-new-entrypoint" class="settings-input" placeholder="Entrypoint (default: /bin/sh)" value="/bin/sh">
+                        <input id="ct-new-cmd" class="settings-input" placeholder="CMD (optional)">
+                        <button class="settings-btn" onclick="createContainer()"><i class="fa-solid fa-play"></i> Start &amp; Attach Manager</button>
+                    </div>
+                </div>
+
+                <div class="card wide" style="margin-top:1rem">
+                    <div class="card-head"><i class="fa-solid fa-server"></i> Active Rootless Environments <button class="icon-btn" onclick="loadContainers()" style="margin-left:auto"><i class="fa-solid fa-rotate-right"></i></button></div>
+                    <div class="table-wrap">
+                        <table class="data-table" id="ct-table">
+                            <thead><tr><th>ID</th><th>Name</th><th>Distro Tarball</th><th>Manager Port</th><th>Status</th><th>Actions</th></tr></thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="card wide" style="margin-top:1rem" id="ct-shell-card" hidden>
+                    <div class="card-head"><i class="fa-solid fa-terminal"></i> Container Shell <button class="icon-btn" onclick="closeContainerShell()" style="margin-left:auto"><i class="fa-solid fa-xmark"></i></button></div>
+                    <div class="term-chrome" style="height:50dvh">
+                        <div class="term-body" id="ct-shell-body" style="height:100%"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ──── Sandbox ──── -->
+            <section id="view-sandbox" class="view">
+                <div class="card wide term-card" style="margin-top:0;display:flex;align-items:center;justify-content:space-between;padding:1rem">
+                    <div>
+                        <h2 style="margin:0;font-size:1.1rem"><i class="fa-solid fa-flask"></i> Instant Sandbox</h2>
+                        <p style="margin:0.2rem 0;color:var(--text3);font-size:0.85rem">Deploys an Alpine Linux container and grants instant shell access.</p>
+                    </div>
+                    <button class="settings-btn" id="btn-launch-sandbox" onclick="launchSandbox()"><i class="fa-solid fa-play"></i> Launch Sandbox</button>
+                </div>
+                <div class="term-chrome" style="margin-top:1rem;height:65dvh" id="sandbox-chrome">
+                    <div class="term-body" id="sandbox-term-body" style="height:100%"></div>
+                </div>
+            </section>
+
+            <!-- ──── Settings ──── -->
+            <section id="view-settings" class="view">
+                <h1 class="page-title"><i class="fa-solid fa-gear"></i> Settings</h1>
+
+                <div class="settings-grid">
+                    <!-- Panel Name -->
+                    <div class="settings-card">
+                        <div class="settings-label">Panel Name</div>
+                        <div class="settings-control">
+                            <input id="set-panel-name" class="settings-input" placeholder="Spanel">
+                            <button class="settings-btn" onclick="savePanelName()"><i class="fa-solid fa-check"></i></button>
+                        </div>
+                    </div>
+
+                    <!-- Theme -->
+                    <div class="settings-card">
+                        <div class="settings-label">Theme</div>
+                        <div class="settings-control theme-options" id="theme-options">
+                            <button class="theme-swatch dark active" data-theme="dark" onclick="setTheme('dark')"><span></span> Dark</button>
+                            <button class="theme-swatch light" data-theme="light" onclick="setTheme('light')"><span></span> Light</button>
+                            <button class="theme-swatch midnight" data-theme="midnight" onclick="setTheme('midnight')"><span></span> Midnight</button>
+                            <button class="theme-swatch forest" data-theme="forest" onclick="setTheme('forest')"><span></span> Forest</button>
+                            <button class="theme-swatch orange" data-theme="orange" onclick="setTheme('orange')"><span></span> Orange</button>
+                        </div>
+                    </div>
+
+                    <!-- Terminal Theme -->
+                    <div class="settings-card">
+                        <div class="settings-label">Terminal Theme</div>
+                        <div class="settings-control theme-options" id="term-theme-options">
+                            <button class="theme-swatch tokyo_night" data-term="tokyo_night" onclick="setTermTheme('tokyo_night')"><span></span> Tokyo Night</button>
+                            <button class="theme-swatch tokyo_light" data-term="tokyo_light" onclick="setTermTheme('tokyo_light')"><span></span> Tokyo Light</button>
+                        </div>
+                    </div>
+
+                    <!-- Floating Windows -->
+                    <div class="settings-card">
+                        <div class="settings-label">Floating Dashboard Cards</div>
+                        <div class="settings-control">
+                            <label class="toggle">
+                                <input type="checkbox" id="set-floating" onchange="toggleFloating(this.checked)">
+                                <span class="toggle-slider"></span>
+                            </label>
+                            <span class="toggle-label" id="float-label">Disabled</span>
+                        </div>
+                    </div>
+
+                    <!-- Change Password -->
+                    <div class="settings-card">
+                        <div class="settings-label">Change Password</div>
+                        <div class="settings-control col">
+                            <input id="set-old-pw" type="password" class="settings-input" placeholder="Current password">
+                            <input id="set-new-pw" type="password" class="settings-input" placeholder="New password">
+                            <button class="settings-btn wide" onclick="changePW()"><i class="fa-solid fa-key"></i> Change</button>
+                            <div id="pw-msg" class="pw-msg"></div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+        </main>
+    </div>
+
+    <script src="/static/script.js"></script>
+</body>
+</html>

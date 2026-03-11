@@ -1,0 +1,6 @@
+fastapi
+uvicorn
+psutil
+websockets
+bcrypt
+python-multipart

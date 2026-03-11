@@ -1,0 +1,19 @@
+FROM python:3.11-alpine
+
+RUN apk add --no-cache proot bash gcc musl-dev libffi-dev
+
+WORKDIR /app
+
+# Server has fewer deps (no bcrypt)
+COPY requirements.server.txt requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY server.py .
+
+RUN mkdir -p shared containers rootfs
+
+EXPOSE 8001
+
+ENV PYTHONUNBUFFERED=1
+
+CMD ["python3", "-m", "uvicorn", "server:app", "--host", "0.0.0.0", "--port", "8001"]

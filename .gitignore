@@ -1,0 +1,13 @@
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+spanel.db
+config.json
+containers/
+rootfs/
+shared/
+*.tar.gz
+*.tar.xz
+.gemini/
