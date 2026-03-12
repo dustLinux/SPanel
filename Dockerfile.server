@@ -8,7 +8,7 @@ WORKDIR /app
 # Server has fewer deps (no bcrypt)
 COPY requirements.server.txt requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
-
+COPY rootfs/ .
 COPY server.py .
 
 RUN mkdir -p shared containers rootfs
