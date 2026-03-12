@@ -1,7 +1,7 @@
 FROM python:3.11-alpine
 
 RUN apk add --no-cache bash gcc musl-dev libffi-dev
-RUN apk add curl proot --repository=http://dl-cdn.alpinelinux.org/alpine/edge/testing
+RUN apk add curl proot --repository=http://dl-cdn.alpinelinux.org/alpine/edge/community
 
 WORKDIR /app
 
