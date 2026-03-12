@@ -10,7 +10,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
-RUN mkdir -p shared containers rootfs
+RUN mkdir -p shared containers
+
 
 EXPOSE 8000
 
