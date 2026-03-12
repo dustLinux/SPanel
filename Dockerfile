@@ -8,9 +8,7 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY main.py .
-COPY static/ static/
-COPY rootfs/ .
+COPY . .
 
 RUN mkdir -p shared containers rootfs
 
