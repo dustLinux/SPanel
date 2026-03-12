@@ -4,14 +4,10 @@ RUN apk add --no-cache bash gcc musl-dev libffi-dev
 RUN apk add curl proot --repository=http://dl-cdn.alpinelinux.org/alpine/edge/community
 
 WORKDIR /app
-
-# Server has fewer deps (no bcrypt)
-COPY requirements.server.txt requirements.txt
+COPY . .
 RUN pip install --no-cache-dir -r requirements.txt
-COPY rootfs/ .
-COPY server.py .
 
-RUN mkdir -p shared containers rootfs
+RUN mkdir -p shared containers 
 
 EXPOSE 8001
 
