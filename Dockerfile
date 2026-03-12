@@ -10,6 +10,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY main.py .
 COPY static/ static/
+COPY rootfs/ .
 
 RUN mkdir -p shared containers rootfs
 
