@@ -6,8 +6,5 @@ venv/
 spanel.db
 config.json
 containers/
-rootfs/
 shared/
-*.tar.gz
-*.tar.xz
 .gemini/
